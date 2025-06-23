@@ -1,0 +1,879 @@
+<html lang="en" class="scroll-smooth" >
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>List Produk TrieStr</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+  />
+  <style>
+    /* Custom scrollbar for catalog content */
+    .scrollbar-thin::-webkit-scrollbar {
+      height: 6px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background-color: #a0aec0;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+
+  <div id="app" class="flex-grow flex flex-col max-w-5xl mx-auto w-full px-4 py-6 sm:px-6 lg:px-8">
+
+    <!-- Header -->
+    <header class="mb-6">
+      <h1 class="text-3xl font-bold text-center text-gray-800">List Produk</h1>
+    </header>
+
+    <!-- Login Section -->
+    <section id="login-section" class="max-w-md mx-auto bg-white rounded-lg shadow p-6">
+      <h2 class="text-xl font-semibold mb-4 text-center text-gray-700">Login</h2>
+      <form id="login-form" class="space-y-4" autocomplete="off">
+        <div>
+          <label for="username" class="block text-gray-700 font-medium mb-1">Username</label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="username or empty for guest"
+            autocomplete="off"
+          />
+        </div>
+        <div>
+          <label for="password" class="block text-gray-700 font-medium mb-1">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="Enter password"
+            autocomplete="off"
+          />
+        </div>
+        <button
+          type="submit"
+          class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded transition"
+        >
+          Login
+        </button>
+      </form>
+      <p class="mt-3 text-center text-sm text-gray-600">Leave username and password empty to continue as guest.</p>
+      <p id="login-error" class="mt-2 text-center text-red-600 font-semibold hidden"></p>
+    </section>
+
+    <!-- Main Content -->
+    <main id="main-content" class="hidden flex-grow flex flex-col mt-6">
+
+      <!-- Admin Menu -->
+      <nav id="admin-menu" class="hidden bg-white rounded-lg shadow p-4 mb-6">
+        <h2 class="text-lg font-semibold mb-3 text-gray-700">Admin Menu</h2>
+        <div class="flex flex-wrap gap-3">
+          <button id="btn-add-catalog" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded flex items-center gap-2">
+            <i class="fas fa-folder-plus"></i> Tambah Catalog
+          </button>
+          <button id="btn-add-product" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center gap-2">
+            <i class="fas fa-plus"></i> Tambah Produk
+          </button>
+          <button id="btn-logout" class="ml-auto bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded flex items-center gap-2">
+            <i class="fas fa-sign-out-alt"></i> Logout
+          </button>
+        </div>
+      </nav>
+
+      <!-- Guest Menu -->
+      <nav id="guest-menu" class="flex justify-end gap-3 mb-6">
+        <a
+          href="https://wa.me/+6283857797304"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded flex items-center gap-2"
+        >
+          <i class="fas fa-phone"></i> Contact Person
+        </a>
+        <a
+          href="https://whatsapp.com/channel/0029VbAygr64dTnKjDJPfm3u"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center gap-2"
+        >
+          <i class="fas fa-comments"></i> Testimoni
+        </a>
+      </nav>
+
+      <!-- Catalog List -->
+      <section id="catalog-list" class="space-y-4 overflow-auto scrollbar-thin max-h-[60vh]">
+        <!-- Catalogs will be dynamically inserted here -->
+      </section>
+    </main>
+
+  </div>
+
+  <!-- Modal Overlay -->
+  <div id="modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 hidden z-40 flex items-center justify-center p-4">
+    <div id="modal" class="bg-white rounded-lg shadow-lg max-w-lg w-full max-h-[90vh] overflow-auto p-6 relative">
+      <button id="modal-close" class="absolute top-3 right-3 text-gray-600 hover:text-gray-900 text-xl font-bold" aria-label="Close modal">&times;</button>
+      <div id="modal-content" class="space-y-4"></div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      // Data structure for catalogs and products
+      // Each catalog has: id, name, products (array)
+      // Each product has: id, name, price, websiteUrl
+      // For demo, 5 catalogs with 5 products each, no images, price and websiteUrl empty initially
+
+      // Generate initial catalogs and products
+      const initialCatalogs = [];
+      for (let c = 1; c <= 5; c++) {
+        const products = [];
+        for (let p = 1; p <= 5; p++) {
+          products.push({
+            id: `p${c}-${p}`,
+            name: `Produk ${p}`,
+            price: (p * 10000) + c * 5000,
+            websiteUrl: '',
+          });
+        }
+        initialCatalogs.push({
+          id: `c${c}`,
+          name: `Catalog ${c}`,
+          products,
+        });
+      }
+
+      // State
+      let catalogs = JSON.parse(localStorage.getItem('catalogs')) || initialCatalogs;
+      let loggedInUser = null; // null = not logged in, "guest" or "admin"
+      const adminUser = { username: "Triestr", password: "ArinsJaya" };
+
+      // DOM Elements
+      const loginSection = document.getElementById('login-section');
+      const loginForm = document.getElementById('login-form');
+      const loginError = document.getElementById('login-error');
+      const mainContent = document.getElementById('main-content');
+      const adminMenu = document.getElementById('admin-menu');
+      const guestMenu = document.getElementById('guest-menu');
+      const catalogList = document.getElementById('catalog-list');
+      const modalOverlay = document.getElementById('modal-overlay');
+      const modal = document.getElementById('modal');
+      const modalContent = document.getElementById('modal-content');
+      const modalCloseBtn = document.getElementById('modal-close');
+      const btnAddCatalog = document.getElementById('btn-add-catalog');
+      const btnAddProduct = document.getElementById('btn-add-product');
+      const btnLogout = document.getElementById('btn-logout');
+
+      // Save catalogs to localStorage
+      function saveCatalogs() {
+        localStorage.setItem('catalogs', JSON.stringify(catalogs));
+      }
+
+      // Render catalogs and products
+      function renderCatalogs() {
+        catalogList.innerHTML = '';
+        catalogs.forEach((catalog, ci) => {
+          // Catalog container
+          const catalogDiv = document.createElement('div');
+          catalogDiv.className = 'bg-white rounded shadow';
+
+          // Catalog header bar (clickable to toggle)
+          const header = document.createElement('button');
+          header.type = 'button';
+          header.className = 'w-full flex justify-between items-center px-4 py-3 text-left font-semibold text-gray-800 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-t';
+          header.setAttribute('aria-expanded', 'false');
+          header.setAttribute('aria-controls', `catalog-content-${catalog.id}`);
+          header.id = `catalog-header-${catalog.id}`;
+          header.innerHTML = `
+            <span>${catalog.name}</span>
+            <i class="fas fa-chevron-down transition-transform duration-300"></i>
+          `;
+          catalogDiv.appendChild(header);
+
+          // Catalog content (hidden by default)
+          const content = document.createElement('div');
+          content.id = `catalog-content-${catalog.id}`;
+          content.className = 'px-4 pb-4 hidden';
+          content.setAttribute('aria-labelledby', `catalog-header-${catalog.id}`);
+
+          // Products list
+          catalog.products.forEach((product, pi) => {
+            const productDiv = document.createElement('div');
+            productDiv.className = 'flex justify-between items-center border-b border-gray-200 py-2 last:border-b-0';
+
+            // Product name and price
+            const productInfo = document.createElement('div');
+            productInfo.className = 'flex flex-col sm:flex-row sm:items-center sm:gap-4 flex-grow min-w-0';
+            const productName = document.createElement('span');
+            productName.className = 'font-medium text-gray-900 truncate';
+            productName.textContent = product.name;
+            const productPrice = document.createElement('span');
+            productPrice.className = 'text-gray-600 whitespace-nowrap';
+            productPrice.textContent = `Rp ${product.price.toLocaleString('id-ID')}`;
+            productInfo.appendChild(productName);
+            productInfo.appendChild(productPrice);
+
+            // Button to open product website modal
+            const btnShowWebsite = document.createElement('button');
+            btnShowWebsite.type = 'button';
+            btnShowWebsite.className = 'ml-4 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded flex items-center gap-2 flex-shrink-0';
+            btnShowWebsite.innerHTML = '<i class="fas fa-external-link-alt"></i> Website';
+            btnShowWebsite.addEventListener('click', () => {
+              openWebsiteModal(product);
+            });
+
+            productDiv.appendChild(productInfo);
+            productDiv.appendChild(btnShowWebsite);
+
+            // If admin, add edit and delete buttons
+            if (loggedInUser === 'admin') {
+              const adminBtns = document.createElement('div');
+              adminBtns.className = 'flex gap-2 ml-4 flex-shrink-0';
+
+              // Edit product button
+              const btnEdit = document.createElement('button');
+              btnEdit.type = 'button';
+              btnEdit.className = 'bg-yellow-400 hover:bg-yellow-500 text-gray-900 px-2 py-1 rounded flex items-center gap-1';
+              btnEdit.title = 'Edit Produk';
+              btnEdit.innerHTML = '<i class="fas fa-edit"></i>';
+              btnEdit.addEventListener('click', () => {
+                openEditProductModal(catalog.id, product.id);
+              });
+
+              // Delete product button
+              const btnDelete = document.createElement('button');
+              btnDelete.type = 'button';
+              btnDelete.className = 'bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded flex items-center gap-1';
+              btnDelete.title = 'Hapus Produk';
+              btnDelete.innerHTML = '<i class="fas fa-trash-alt"></i>';
+              btnDelete.addEventListener('click', () => {
+                if (confirm(`Hapus produk "${product.name}" dari ${catalog.name}?`)) {
+                  deleteProduct(catalog.id, product.id);
+                }
+              });
+
+              adminBtns.appendChild(btnEdit);
+              adminBtns.appendChild(btnDelete);
+              productDiv.appendChild(adminBtns);
+            }
+
+            content.appendChild(productDiv);
+          });
+
+          catalogDiv.appendChild(content);
+
+          // If admin, add edit catalog button and delete catalog button in header right side
+          if (loggedInUser === 'admin') {
+            const adminCatalogBtns = document.createElement('div');
+            adminCatalogBtns.className = 'flex gap-2 items-center ml-2 flex-shrink-0';
+
+            // Edit catalog button (edit catalog name)
+            const btnEditCatalog = document.createElement('button');
+            btnEditCatalog.type = 'button';
+            btnEditCatalog.className = 'bg-yellow-400 hover:bg-yellow-500 text-gray-900 px-2 py-1 rounded flex items-center gap-1';
+            btnEditCatalog.title = 'Edit Catalog';
+            btnEditCatalog.innerHTML = '<i class="fas fa-edit"></i>';
+            btnEditCatalog.addEventListener('click', () => {
+              openEditCatalogModal(catalog.id);
+            });
+
+            // Delete catalog button
+            const btnDeleteCatalog = document.createElement('button');
+            btnDeleteCatalog.type = 'button';
+            btnDeleteCatalog.className = 'bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded flex items-center gap-1';
+            btnDeleteCatalog.title = 'Hapus Catalog';
+            btnDeleteCatalog.innerHTML = '<i class="fas fa-trash-alt"></i>';
+            btnDeleteCatalog.addEventListener('click', () => {
+              if (confirm(`Hapus catalog "${catalog.name}" beserta semua produk?`)) {
+                deleteCatalog(catalog.id);
+              }
+            });
+
+            adminCatalogBtns.appendChild(btnEditCatalog);
+            adminCatalogBtns.appendChild(btnDeleteCatalog);
+
+            // Append admin buttons to header, after the text and chevron
+            header.appendChild(adminCatalogBtns);
+          }
+
+          // Toggle catalog content on header click
+          header.addEventListener('click', (e) => {
+            // Prevent toggle if clicked on admin buttons
+            if (e.target.closest('button') && e.target.closest('button') !== header) return;
+
+            const expanded = header.getAttribute('aria-expanded') === 'true';
+            header.setAttribute('aria-expanded', String(!expanded));
+            content.classList.toggle('hidden');
+            const icon = header.querySelector('i.fas.fa-chevron-down');
+            if (icon) {
+              icon.style.transform = !expanded ? 'rotate(180deg)' : 'rotate(0deg)';
+            }
+          });
+
+          catalogList.appendChild(catalogDiv);
+        });
+      }
+
+      // Open modal to show product website button + text
+      function openWebsiteModal(product) {
+        modalContent.innerHTML = '';
+        const container = document.createElement('div');
+        container.className = 'flex flex-col gap-4';
+
+        const title = document.createElement('h3');
+        title.className = 'text-xl font-semibold text-gray-800';
+        title.textContent = product.name;
+        container.appendChild(title);
+
+        const websiteUrl = product.websiteUrl?.trim();
+
+        if (!websiteUrl) {
+          const noUrlMsg = document.createElement('p');
+          noUrlMsg.className = 'text-gray-600';
+          noUrlMsg.textContent = 'Website tujuan belum diatur untuk produk ini.';
+          container.appendChild(noUrlMsg);
+        } else {
+          // Show text and button side by side
+          const flexRow = document.createElement('div');
+          flexRow.className = 'flex flex-col sm:flex-row sm:items-center sm:gap-4';
+
+          const urlText = document.createElement('span');
+          urlText.className = 'break-all text-indigo-700 underline cursor-pointer';
+          urlText.textContent = websiteUrl;
+          urlText.title = 'Klik untuk membuka website';
+          urlText.addEventListener('click', () => {
+            window.open(websiteUrl, '_blank', 'noopener');
+          });
+
+          const openBtn = document.createElement('button');
+          openBtn.type = 'button';
+          openBtn.className = 'mt-2 sm:mt-0 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded flex items-center gap-2';
+          openBtn.innerHTML = '<i class="fas fa-external-link-alt"></i> Buka Website';
+          openBtn.addEventListener('click', () => {
+            window.open(websiteUrl, '_blank', 'noopener');
+          });
+
+          flexRow.appendChild(urlText);
+          flexRow.appendChild(openBtn);
+          container.appendChild(flexRow);
+        }
+
+        modalContent.appendChild(container);
+        openModal();
+      }
+
+      // Open modal to edit product (name, price, websiteUrl)
+      function openEditProductModal(catalogId, productId) {
+        modalContent.innerHTML = '';
+        const catalog = catalogs.find(c => c.id === catalogId);
+        if (!catalog) return;
+        const product = catalog.products.find(p => p.id === productId);
+        if (!product) return;
+
+        const form = document.createElement('form');
+        form.className = 'space-y-4';
+
+        const title = document.createElement('h3');
+        title.className = 'text-xl font-semibold text-gray-800';
+        title.textContent = `Edit Produk - ${product.name}`;
+        form.appendChild(title);
+
+        // Name input
+        const nameGroup = document.createElement('div');
+        const nameLabel = document.createElement('label');
+        nameLabel.className = 'block font-medium text-gray-700 mb-1';
+        nameLabel.textContent = 'Nama Produk';
+        nameLabel.setAttribute('for', 'edit-product-name');
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.id = 'edit-product-name';
+        nameInput.className = 'w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500';
+        nameInput.value = product.name;
+        nameInput.required = true;
+        nameGroup.appendChild(nameLabel);
+        nameGroup.appendChild(nameInput);
+        form.appendChild(nameGroup);
+
+        // Price input
+        const priceGroup = document.createElement('div');
+        const priceLabel = document.createElement('label');
+        priceLabel.className = 'block font-medium text-gray-700 mb-1';
+        priceLabel.textContent = 'Harga (Rp)';
+        priceLabel.setAttribute('for', 'edit-product-price');
+        const priceInput = document.createElement('input');
+        priceInput.type = 'number';
+        priceInput.min = '0';
+        priceInput.id = 'edit-product-price';
+        priceInput.className = 'w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500';
+        priceInput.value = product.price;
+        priceInput.required = true;
+        priceGroup.appendChild(priceLabel);
+        priceGroup.appendChild(priceInput);
+        form.appendChild(priceGroup);
+
+        // Website URL input
+        const urlGroup = document.createElement('div');
+        const urlLabel = document.createElement('label');
+        urlLabel.className = 'block font-medium text-gray-700 mb-1';
+        urlLabel.textContent = 'Website Tujuan (URL)';
+        urlLabel.setAttribute('for', 'edit-product-url');
+        const urlInput = document.createElement('input');
+        urlInput.type = 'url';
+        urlInput.id = 'edit-product-url';
+        urlInput.className = 'w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500';
+        urlInput.value = product.websiteUrl;
+        urlGroup.appendChild(urlLabel);
+        urlGroup.appendChild(urlInput);
+        form.appendChild(urlGroup);
+
+        // Buttons
+        const btnGroup = document.createElement('div');
+        btnGroup.className = 'flex justify-end gap-3';
+
+        const btnCancel = document.createElement('button');
+        btnCancel.type = 'button';
+        btnCancel.className = 'px-4 py-2 rounded border border-gray-300 hover:bg-gray-100';
+        btnCancel.textContent = 'Batal';
+        btnCancel.addEventListener('click', closeModal);
+
+        const btnSave = document.createElement('button');
+        btnSave.type = 'submit';
+        btnSave.className = 'bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded';
+        btnSave.textContent = 'Simpan';
+
+        btnGroup.appendChild(btnCancel);
+        btnGroup.appendChild(btnSave);
+        form.appendChild(btnGroup);
+
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const newName = nameInput.value.trim();
+          const newPrice = Number(priceInput.value);
+          const newUrl = urlInput.value.trim();
+
+          if (!newName) {
+            alert('Nama produk tidak boleh kosong.');
+            return;
+          }
+          if (isNaN(newPrice) || newPrice < 0) {
+            alert('Harga harus berupa angka positif.');
+            return;
+          }
+          if (newUrl && !isValidUrl(newUrl)) {
+            alert('URL website tidak valid.');
+            return;
+          }
+
+          product.name = newName;
+          product.price = newPrice;
+          product.websiteUrl = newUrl;
+          saveCatalogs();
+          renderCatalogs();
+          closeModal();
+        });
+
+        modalContent.appendChild(form);
+        openModal();
+      }
+
+      // Open modal to edit catalog name
+      function openEditCatalogModal(catalogId) {
+        modalContent.innerHTML = '';
+        const catalog = catalogs.find(c => c.id === catalogId);
+        if (!catalog) return;
+
+        const form = document.createElement('form');
+        form.className = 'space-y-4';
+
+        const title = document.createElement('h3');
+        title.className = 'text-xl font-semibold text-gray-800';
+        title.textContent = `Edit Catalog - ${catalog.name}`;
+        form.appendChild(title);
+
+        // Catalog name input
+        const nameGroup = document.createElement('div');
+        const nameLabel = document.createElement('label');
+        nameLabel.className = 'block font-medium text-gray-700 mb-1';
+        nameLabel.textContent = 'Nama Catalog';
+        nameLabel.setAttribute('for', 'edit-catalog-name');
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.id = 'edit-catalog-name';
+        nameInput.className = 'w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500';
+        nameInput.value = catalog.name;
+        nameInput.required = true;
+        nameGroup.appendChild(nameLabel);
+        nameGroup.appendChild(nameInput);
+        form.appendChild(nameGroup);
+
+        // Buttons
+        const btnGroup = document.createElement('div');
+        btnGroup.className = 'flex justify-end gap-3';
+
+        const btnCancel = document.createElement('button');
+        btnCancel.type = 'button';
+        btnCancel.className = 'px-4 py-2 rounded border border-gray-300 hover:bg-gray-100';
+        btnCancel.textContent = 'Batal';
+        btnCancel.addEventListener('click', closeModal);
+
+        const btnSave = document.createElement('button');
+        btnSave.type = 'submit';
+        btnSave.className = 'bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded';
+        btnSave.textContent = 'Simpan';
+
+        btnGroup.appendChild(btnCancel);
+        btnGroup.appendChild(btnSave);
+        form.appendChild(btnGroup);
+
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const newName = nameInput.value.trim();
+          if (!newName) {
+            alert('Nama catalog tidak boleh kosong.');
+            return;
+          }
+          catalog.name = newName;
+          saveCatalogs();
+          renderCatalogs();
+          closeModal();
+        });
+
+        modalContent.appendChild(form);
+        openModal();
+      }
+
+      // Add new catalog modal
+      function openAddCatalogModal() {
+        modalContent.innerHTML = '';
+
+        const form = document.createElement('form');
+        form.className = 'space-y-4';
+
+        const title = document.createElement('h3');
+        title.className = 'text-xl font-semibold text-gray-800';
+        title.textContent = 'Tambah Catalog Baru';
+        form.appendChild(title);
+
+        // Catalog name input
+        const nameGroup = document.createElement('div');
+        const nameLabel = document.createElement('label');
+        nameLabel.className = 'block font-medium text-gray-700 mb-1';
+        nameLabel.textContent = 'Nama Catalog';
+        nameLabel.setAttribute('for', 'new-catalog-name');
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.id = 'new-catalog-name';
+        nameInput.className = 'w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500';
+        nameInput.required = true;
+        nameGroup.appendChild(nameLabel);
+        nameGroup.appendChild(nameInput);
+        form.appendChild(nameGroup);
+
+        // Buttons
+        const btnGroup = document.createElement('div');
+        btnGroup.className = 'flex justify-end gap-3';
+
+        const btnCancel = document.createElement('button');
+        btnCancel.type = 'button';
+        btnCancel.className = 'px-4 py-2 rounded border border-gray-300 hover:bg-gray-100';
+        btnCancel.textContent = 'Batal';
+        btnCancel.addEventListener('click', closeModal);
+
+        const btnAdd = document.createElement('button');
+        btnAdd.type = 'submit';
+        btnAdd.className = 'bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded';
+        btnAdd.textContent = 'Tambah';
+
+        btnGroup.appendChild(btnCancel);
+        btnGroup.appendChild(btnAdd);
+        form.appendChild(btnGroup);
+
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const newName = nameInput.value.trim();
+          if (!newName) {
+            alert('Nama catalog tidak boleh kosong.');
+            return;
+          }
+          // Generate new catalog id
+          const newId = `c${Date.now()}`;
+          catalogs.push({
+            id: newId,
+            name: newName,
+            products: [],
+          });
+          saveCatalogs();
+          renderCatalogs();
+          closeModal();
+        });
+
+        modalContent.appendChild(form);
+        openModal();
+      }
+
+      // Add new product modal (choose catalog first)
+      function openAddProductModal() {
+        modalContent.innerHTML = '';
+
+        if (catalogs.length === 0) {
+          const noCatalogMsg = document.createElement('p');
+          noCatalogMsg.className = 'text-gray-600';
+          noCatalogMsg.textContent = 'Tidak ada catalog. Tambahkan catalog terlebih dahulu.';
+          modalContent.appendChild(noCatalogMsg);
+          openModal();
+          return;
+        }
+
+        const form = document.createElement('form');
+        form.className = 'space-y-4';
+
+        const title = document.createElement('h3');
+        title.className = 'text-xl font-semibold text-gray-800';
+        title.textContent = 'Tambah Produk Baru';
+        form.appendChild(title);
+
+        // Catalog select
+        const catalogGroup = document.createElement('div');
+        const catalogLabel = document.createElement('label');
+        catalogLabel.className = 'block font-medium text-gray-700 mb-1';
+        catalogLabel.textContent = 'Pilih Catalog';
+        catalogLabel.setAttribute('for', 'select-catalog');
+        const catalogSelect = document.createElement('select');
+        catalogSelect.id = 'select-catalog';
+        catalogSelect.className = 'w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500';
+        catalogs.forEach(c => {
+          const option = document.createElement('option');
+          option.value = c.id;
+          option.textContent = c.name;
+          catalogSelect.appendChild(option);
+        });
+        catalogGroup.appendChild(catalogLabel);
+        catalogGroup.appendChild(catalogSelect);
+        form.appendChild(catalogGroup);
+
+        // Product name input
+        const nameGroup = document.createElement('div');
+        const nameLabel = document.createElement('label');
+        nameLabel.className = 'block font-medium text-gray-700 mb-1';
+        nameLabel.textContent = 'Nama Produk';
+        nameLabel.setAttribute('for', 'new-product-name');
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.id = 'new-product-name';
+        nameInput.className = 'w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500';
+        nameInput.required = true;
+        nameGroup.appendChild(nameLabel);
+        nameGroup.appendChild(nameInput);
+        form.appendChild(nameGroup);
+
+        // Price input
+        const priceGroup = document.createElement('div');
+        const priceLabel = document.createElement('label');
+        priceLabel.className = 'block font-medium text-gray-700 mb-1';
+        priceLabel.textContent = 'Harga (Rp)';
+        priceLabel.setAttribute('for', 'new-product-price');
+        const priceInput = document.createElement('input');
+        priceInput.type = 'number';
+        priceInput.min = '0';
+        priceInput.id = 'new-product-price';
+        priceInput.className = 'w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500';
+        priceInput.required = true;
+        priceGroup.appendChild(priceLabel);
+        priceGroup.appendChild(priceInput);
+        form.appendChild(priceGroup);
+
+        // Website URL input
+        const urlGroup = document.createElement('div');
+        const urlLabel = document.createElement('label');
+        urlLabel.className = 'block font-medium text-gray-700 mb-1';
+        urlLabel.textContent = 'Website Tujuan (URL)';
+        urlLabel.setAttribute('for', 'new-product-url');
+        const urlInput = document.createElement('input');
+        urlInput.type = 'url';
+        urlInput.id = 'new-product-url';
+        urlInput.className = 'w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500';
+        urlGroup.appendChild(urlLabel);
+        urlGroup.appendChild(urlInput);
+        form.appendChild(urlGroup);
+
+        // Buttons
+        const btnGroup = document.createElement('div');
+        btnGroup.className = 'flex justify-end gap-3';
+
+        const btnCancel = document.createElement('button');
+        btnCancel.type = 'button';
+        btnCancel.className = 'px-4 py-2 rounded border border-gray-300 hover:bg-gray-100';
+        btnCancel.textContent = 'Batal';
+        btnCancel.addEventListener('click', closeModal);
+
+        const btnAdd = document.createElement('button');
+        btnAdd.type = 'submit';
+        btnAdd.className = 'bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded';
+        btnAdd.textContent = 'Tambah';
+
+        btnGroup.appendChild(btnCancel);
+        btnGroup.appendChild(btnAdd);
+        form.appendChild(btnGroup);
+
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const catalogId = catalogSelect.value;
+          const newName = nameInput.value.trim();
+          const newPrice = Number(priceInput.value);
+          const newUrl = urlInput.value.trim();
+
+          if (!newName) {
+            alert('Nama produk tidak boleh kosong.');
+            return;
+          }
+          if (isNaN(newPrice) || newPrice < 0) {
+            alert('Harga harus berupa angka positif.');
+            return;
+          }
+          if (newUrl && !isValidUrl(newUrl)) {
+            alert('URL website tidak valid.');
+            return;
+          }
+
+          const catalog = catalogs.find(c => c.id === catalogId);
+          if (!catalog) {
+            alert('Catalog tidak ditemukan.');
+            return;
+          }
+
+          // Generate new product id
+          const newId = `p${Date.now()}`;
+          catalog.products.push({
+            id: newId,
+            name: newName,
+            price: newPrice,
+            websiteUrl: newUrl,
+          });
+          saveCatalogs();
+          renderCatalogs();
+          closeModal();
+        });
+
+        modalContent.appendChild(form);
+        openModal();
+      }
+
+      // Delete product
+      function deleteProduct(catalogId, productId) {
+        const catalog = catalogs.find(c => c.id === catalogId);
+        if (!catalog) return;
+        const idx = catalog.products.findIndex(p => p.id === productId);
+        if (idx === -1) return;
+        catalog.products.splice(idx, 1);
+        saveCatalogs();
+        renderCatalogs();
+      }
+
+      // Delete catalog
+      function deleteCatalog(catalogId) {
+        const idx = catalogs.findIndex(c => c.id === catalogId);
+        if (idx === -1) return;
+        catalogs.splice(idx, 1);
+        saveCatalogs();
+        renderCatalogs();
+      }
+
+      // Modal open/close
+      function openModal() {
+        modalOverlay.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        modalCloseBtn.focus();
+      }
+      function closeModal() {
+        modalOverlay.classList.add('hidden');
+        document.body.style.overflow = '';
+      }
+      modalCloseBtn.addEventListener('click', closeModal);
+      modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) closeModal();
+      });
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !modalOverlay.classList.contains('hidden')) {
+          closeModal();
+        }
+      });
+
+      // Validate URL
+      function isValidUrl(string) {
+        try {
+          new URL(string);
+          return true;
+        } catch (_) {
+          return false;
+        }
+      }
+
+      // Login form submit
+      loginForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        loginError.classList.add('hidden');
+        const username = loginForm.username.value.trim();
+        const password = loginForm.password.value;
+
+        if (!username && !password) {
+          // Guest login
+          loggedInUser = 'guest';
+          afterLogin();
+          return;
+        }
+
+        if (username === adminUser.username && password === adminUser.password) {
+          loggedInUser = 'admin';
+          afterLogin();
+          return;
+        }
+
+        loginError.textContent = 'Username atau password salah.';
+        loginError.classList.remove('hidden');
+      });
+
+      // After login success
+      function afterLogin() {
+        loginSection.classList.add('hidden');
+        mainContent.classList.remove('hidden');
+        if (loggedInUser === 'admin') {
+          adminMenu.classList.remove('hidden');
+          guestMenu.classList.add('hidden');
+        } else {
+          adminMenu.classList.add('hidden');
+          guestMenu.classList.remove('hidden');
+        }
+        renderCatalogs();
+      }
+
+      // Logout button
+      btnLogout.addEventListener('click', () => {
+        if (confirm('Yakin ingin logout?')) {
+          loggedInUser = null;
+          loginForm.reset();
+          loginError.classList.add('hidden');
+          loginSection.classList.remove('hidden');
+          mainContent.classList.add('hidden');
+          adminMenu.classList.add('hidden');
+          guestMenu.classList.add('hidden');
+        }
+      });
+
+      // Admin menu buttons
+      btnAddCatalog.addEventListener('click', openAddCatalogModal);
+      btnAddProduct.addEventListener('click', openAddProductModal);
+
+      // Initial focus on username input
+      window.addEventListener('load', () => {
+        loginForm.username.focus();
+      });
+    })();
+  </script>
+</body>
+</html>
